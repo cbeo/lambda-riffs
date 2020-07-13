@@ -1,9 +1,9 @@
 ;;;; lambda-tools.asd
 
 (asdf:defsystem #:lambda-tools
-  :description "Describe lambda-tools here"
-  :author "Your Name <your.name@example.com>"
-  :license  "Specify license here"
+  :description "Macros and utilities for combining making and lambdas"
+  :author "Colin Okay <cbeok@protonmail.com>"
+  :license  "GPLv3"
   :version "0.0.1"
   :serial t
   :depends-on (:alexandria)
