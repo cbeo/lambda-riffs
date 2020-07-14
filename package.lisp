@@ -4,6 +4,6 @@
   (:use #:cl)
   (:import-from #:alexandria
                 #:if-let)
-  (:export #:$
+  (:export #:$$
            #:$and
            #:$or))
