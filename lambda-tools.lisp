@@ -16,9 +16,8 @@ PREDICATES have side effects, they will be executed only if each of
 the preceding predicates in the list returned NIL."
   (labels ((disj (x preds)
              (if (null preds) nil
-                 (if-let (res (funcall (car preds) x))
-                   res
-                   (disj x (cdr preds))))))
+                 (or (function pred x)
+                     (disj x (cdr preds))))))
     (lambda (x) (disj x predicates))))
 
 (defun $and (&rest predicates)
