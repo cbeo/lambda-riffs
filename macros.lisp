@@ -4,7 +4,7 @@
   (defun is-substitute-var (symbol)
     (and (symbolp symbol)
          (eq (elt (symbol-name symbol) 0)
-             #\_))))
+             #\$))))
 
 
 
@@ -19,22 +19,22 @@ A function is returned, it accepts exactly the number of variables as
 there were unique blanks in the expression. When calling the new
 function, the variables are bound in the order they appeared in EXPR.
 
-> (macroexpand-1 '($ (+ _a (* _b 3) _b (- _a _c) 10)))
-  (LAMBDA (_A _B _C) 
-     (+ _A 
-       (* _B 3) 
-       _B 
-       (- _A _C) 
+> (macroexpand-1 '($ (+ $a (* $b 3) $b (- $a $c) 10)))
+  (LAMBDA ($A $B $C) 
+     (+ $A 
+       (* $B 3) 
+       $B 
+       (- $A $C) 
        10))
 
 The macro is useful for succinctly passing functions to
 higher order functions:
 
-> (mapcar ($ (+ _ 10)) '(1 2 3 4))
+> (mapcar ($ (+ $ 10)) '(1 2 3 4))
  (11 12 13 14)
 
 > (let ((elt-num 2))
-    (mapcar ($ (elt _ elt-num)) 
+    (mapcar ($ (elt $ elt-num)) 
             (list \"hey dude\" 
                   #(1 2 3 4)
                   \"ffffffffff\")))
