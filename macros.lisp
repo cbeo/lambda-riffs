@@ -43,17 +43,14 @@ higher order functions:
                   #(1 2 3 4)
                   \"ffffffffff\")))
  (#\y 3 #\f)"
-  (let  ((new-params (list))
-         (calls-to-$$ 0))
+  (let  ((new-params (list)))
     (subst-if t (constantly nil) expr
               :key (lambda (x)
                      (when (is-substitute-var x)
                        (pushnew x new-params))
                      (when (eql '$$ x)
-                       (incf calls-to-$$))))
-    (if (not (zerop calls-to-$$))
-        (error "$$ cannot be nested")
-        `(lambda ,(reverse  new-params) ,expr))))
+                       (error "$$ cannot be nested"))))
+    `(lambda ,(reverse  new-params) ,expr)))
 
 
 
