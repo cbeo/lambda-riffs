@@ -1,11 +1,28 @@
 (in-package :lambda-tools)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun is-substitute-var (symbol)
+  ;;; some fucntions for workign with substitution variables
+
+  (defun substitute-var-p (symbol)
     (and (not (eql '$$ symbol))
          (symbolp symbol)
          (eq (elt (symbol-name symbol) 0)
-             #\$))))
+             #\$)))
+
+  (defun numeric-char-p (c)
+    (and (alphanumericp c) (not (alpha-char-p c))))
+  
+  (defun numeric-var-p (symbol)
+    (and (substitute-var-p symbol)
+         (numeric-char-p
+          (elt (symbol-name symbol) 1))))
+
+
+  (defun numerically-before-p (a b)
+    (apply #'<
+           (mapcar (lambda (x) (parse-integer (symbol-name x) :start 1 :junk-allowed t))
+                   (list a b))))
+  )
 
 
 
@@ -42,15 +59,40 @@ higher order functions:
             (list \"hey dude\" 
                   #(1 2 3 4)
                   \"ffffffffff\")))
- (#\y 3 #\f)"
-  (let  ((new-params (list)))
+ (#\y 3 #\f)
+
+You can specify the order of the variable in the argument list by
+nameing the variable with a number after the $ symbol. If you go this
+route, all of your variables must be numbered.
+
+E.g.
+
+> (reduce ($$ (concatenate 'string $2-x #\Space $1-acc))
+          (list \"one\" \"two\" \"three\")
+          :initial-value \"zubas\")
+
+ \"three two one zubas\"
+
+
+Note that you can use any numbers, the arguments are sorted by < on
+those numbers.
+
+"
+  (let  ((new-params (list))
+         (numeric-params nil))
     (subst-if t (constantly nil) expr
               :key (lambda (x)
-                     (when (is-substitute-var x)
+                     (when (substitute-var-p x)
                        (pushnew x new-params))
+                     (when (numeric-var-p x)
+                       (setf numeric-params t))
                      (when (eql '$$ x)
                        (error "$$ cannot be nested"))))
-    `(lambda ,(reverse  new-params) ,expr)))
+    (setf new-params
+          (if numeric-params 
+              (sort new-params #'numerically-before-p)
+              (reverse new-params)))
+    `(lambda ,new-params  ,expr)))
 
 
 
