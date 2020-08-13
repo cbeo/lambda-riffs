@@ -6,4 +6,6 @@
            #:>>
            #:<>
            #:and>
-           #:or>))
+           #:or>
+           #:enable-partial-eval-reader-macro
+           #:enable-lazy-eval-reader-macros))

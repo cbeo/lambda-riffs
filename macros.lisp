@@ -91,9 +91,6 @@ those numbers.
 
 
 
-
-
-
 (defmacro and> (&rest preds)
   (let ((block-label (gensym)))
     `(let ((preds (list ,@preds)))
@@ -118,10 +115,36 @@ those numbers.
                (when acc (return-from ,block-label acc)))
              acc))))))
 
+(defmacro make-lazy (form)
+  (let ((run-p (gensym))
+        (val (gensym)))
+    `(let ((,run-p nil)
+           (,val nil))
+       (lambda ()
+         (unless ,run-p
+           (setf ,val ,form)
+           (setf ,run-p t))
+         ,val))))
 
-(set-dispatch-macro-character
- #\# #\$
- (lambda (stream subchar arg)
-   (declare (ignore arg subchar))
-   (let ((form (read stream)))
-     (list '$$ form))))
+
+(defun enable-partial-eval-reader-macro ()
+  (set-dispatch-macro-character
+   #\# #\$
+   (lambda (stream subchar arg)
+     (declare (ignore arg subchar))
+     (list '$$ (read stream)))))
+
+
+(defun enable-lazy-eval-reader-macros ()
+
+  (set-dispatch-macro-character
+   #\# #\~
+   (lambda (stream subchar arg)
+     (declare (ignore arg subchar))
+     (list 'make-lazy (read stream))))
+
+  (set-dispatch-macro-character
+   #\# #\!
+   (lambda (stream subchar arg)
+     (declare (ignore arg subchar))
+     (list 'funcall (read stream)))))
