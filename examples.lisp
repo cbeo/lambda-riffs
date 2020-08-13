@@ -2,6 +2,8 @@
 (defpackage #:lt-examples
   (:use #:cl #:lambda-tools))
 
+(enable-partial-eval-reader-macro)
+
 
 ;; http://rosettacode.org/wiki/Luhn_test_of_credit_card_numbers 
 (defun luhn (n)
