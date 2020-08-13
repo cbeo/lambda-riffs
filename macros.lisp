@@ -3,91 +3,47 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;;; some fucntions for workign with substitution variables
 
-  (defun substitute-var-p (symbol)
-    (and (not (eql '$$ symbol))
+  (defun substitute-var-p (symbol prefix)
+    (and (not (eql '$ symbol))
          (symbolp symbol)
-         (eq (elt (symbol-name symbol) 0)
-             #\$)))
+         (<= (length prefix)
+             (length (symbol-name symbol)))
+         (string-equal (symbol-name symbol) prefix
+                       :end1 (length prefix))))
 
-  (defun numeric-char-p (c)
-    (and (alphanumericp c) (not (alpha-char-p c))))
-  
-  (defun numeric-var-p (symbol)
-    (and (substitute-var-p symbol)
-         (numeric-char-p
-          (elt (symbol-name symbol) 1))))
+  (defun numeric-var-p (symbol prefix)
+    (and (substitute-var-p symbol prefix)
+         (digit-char-p
+          (elt (symbol-name symbol) (length prefix))))))
 
-
-  (defun numerically-before-p (a b)
-    (apply #'<
-           (mapcar (lambda (x) (parse-integer (symbol-name x) :start 1 :junk-allowed t))
-                   (list a b)))))
-
-(defmacro $$ (expr)
-  "Quickly create functions from an expression EXPR with 'blanks' in
-it. Each blank is a symbol that betins with the underscore _. Symbols
-with the same name are treated as the same variable.
-
-A function is returned, it accepts exactly the number of variables as
-there were unique blanks in the expression. When calling the new
-function, the variables are bound in the order they appeared in EXPR.
-
-This is a rather simple macro - you cannot nest $$ forms. If you try,
-an error will be raised.
-
-> (macroexpand-1 '($$ (+ $a (* $b 3) $b (- $a $c) 10)))
-  (LAMBDA ($A $B $C) 
-     (+ $A 
-       (* $B 3) 
-       $B 
-       (- $A $C) 
-       10))
-
-The macro is useful for succinctly passing functions to
-higher order functions:
-
-> (mapcar ($$ (+ $ 10)) '(1 2 3 4))
- (11 12 13 14)
-
-> (let ((elt-num 2))
-    (mapcar ($ (elt $ elt-num)) 
-            (list \"hey dude\" 
-                  #(1 2 3 4)
-                  \"ffffffffff\")))
- (#\y 3 #\f)
-
-You can specify the order of the variable in the argument list by
-nameing the variable with a number after the $ symbol. If you go this
-route, all of your variables must be numbered.
-
-E.g.
-
-> (reduce ($$ (concatenate 'string $2-x #\Space $1-acc))
-          (list \"one\" \"two\" \"three\")
-          :initial-value \"zubas\")
-
- \"three two one zubas\"
-
-
-Note that you can use any numbers, the arguments are sorted by < on
-those numbers.
-
-"
-  (let  ((new-params (list))
-         (numeric-params nil))
-    (subst-if t (constantly nil) expr
-              :key (lambda (x)
-                     (when (substitute-var-p x)
-                       (pushnew x new-params))
-                     (when (numeric-var-p x)
-                       (setf numeric-params t))
-                     (when (eql '$$ x)
-                       (error "$$ cannot be nested"))))
+(defmacro $ ((&optional (prefix "$")) expr)
+  (let ((new-params (list))
+        (numeric-params nil))
+    (labels ((walk (node)
+               (cond ((and
+                       (consp node)
+                       (consp (car node))
+                       (eq '$ (caar node)))
+                      (walk (cdr node)))
+                     
+                     ((consp node)
+                      (walk (car node))
+                      (walk (cdr node)))
+                     (t
+                      (when (substitute-var-p node prefix)
+                        (pushnew node new-params))
+                      (when (numeric-var-p node prefix)
+                        (setf numeric-params t))))))
+      (walk expr))
     (setf new-params
-          (if numeric-params 
-              (sort new-params #'numerically-before-p)
+          (if numeric-params
+              (sort new-params #'<
+                    :key (lambda (var)
+                           (parse-integer (symbol-name var)
+                                          :junk-allowed t
+                                          :start (length prefix))))
               (reverse new-params)))
-    `(lambda ,new-params  ,expr)))
+    `(lambda ,new-params ,expr)))
 
 
 
@@ -130,9 +86,14 @@ those numbers.
 (defun enable-partial-eval-reader-macro ()
   (set-dispatch-macro-character
    #\# #\$
-   (lambda (stream subchar arg)
-     (declare (ignore arg subchar))
-     (list '$$ (read stream)))))
+   (lambda (stream subchar infix)
+     (declare (ignore subchar infix))
+     (let ((form1 (read stream)))
+       (if (symbolp form1)
+           (list '$ (list (concatenate 'string "$"
+                                       (symbol-name form1)))
+                 (read stream))
+           (list '$ () form1))))))
 
 
 (defun enable-lazy-eval-reader-macros ()

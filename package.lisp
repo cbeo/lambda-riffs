@@ -2,7 +2,7 @@
 
 (defpackage #:lambda-tools
   (:use #:cl)
-  (:export #:$$
+  (:export #:$
            #:>>
            #:<>
            #:conj
