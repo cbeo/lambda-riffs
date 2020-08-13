@@ -5,7 +5,7 @@
   (:export #:$$
            #:>>
            #:<>
-           #:and>
-           #:or>
+           #:conj
+           #:disj
            #:enable-partial-eval-reader-macro
            #:enable-lazy-eval-reader-macros))

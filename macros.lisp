@@ -91,7 +91,7 @@ those numbers.
 
 
 
-(defmacro and> (&rest preds)
+(defmacro conj (&rest preds)
   (let ((block-label (gensym)))
     `(let ((preds (list ,@preds)))
        (lambda (arg)
@@ -103,7 +103,7 @@ those numbers.
                (unless acc (return-from ,block-label nil)))
              acc))))))
 
-(defmacro or> (&rest preds)
+(defmacro disj (&rest preds)
   (let ((block-label (gensym)))
     `(let ((preds (list ,@preds)))
        (lambda (arg)
