@@ -12,6 +12,6 @@
       #$(mapcar #'*
                 (loop :for i :upto (length $digits) :collect (1+ (mod i 2)))
                 $digits)
-      #$(mapcar #$$(if (> $$x 9) (- $$x 9) $$x) $digits)
+      #$(mapcar #$$(if (> $$x 9) (- $$x 9) $$x) $digits)  ;; <-- nested partial eval
       #$(zerop (mod (apply #'+ $digits) 10))))
 
