@@ -21,12 +21,7 @@
   (defun numerically-before-p (a b)
     (apply #'<
            (mapcar (lambda (x) (parse-integer (symbol-name x) :start 1 :junk-allowed t))
-                   (list a b))))
-  )
-
-
-
-
+                   (list a b)))))
 
 (defmacro $$ (expr)
   "Quickly create functions from an expression EXPR with 'blanks' in
@@ -99,3 +94,34 @@ those numbers.
 
 
 
+(defmacro and> (&rest preds)
+  (let ((block-label (gensym)))
+    `(let ((preds (list ,@preds)))
+       (lambda (arg)
+         (block ,block-label
+           (unless preds (return-from ,block-label t))
+           (let (acc)
+             (dolist (p preds)
+               (setf acc (funcall p arg))
+               (unless acc (return-from ,block-label nil)))
+             acc))))))
+
+(defmacro or> (&rest preds)
+  (let ((block-label (gensym)))
+    `(let ((preds (list ,@preds)))
+       (lambda (arg)
+         (block ,block-label
+           (unless preds (return-from ,block-label nil))
+           (let (acc)
+             (dolist (p preds)
+               (setf acc (funcall p arg))
+               (when acc (return-from ,block-label acc)))
+             acc))))))
+
+
+(set-dispatch-macro-character
+ #\# #\$
+ (lambda (stream subchar arg)
+   (declare (ignore arg subchar))
+   (let ((form (read stream)))
+     (list '$$ form))))
