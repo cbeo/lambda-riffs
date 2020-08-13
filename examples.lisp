@@ -15,3 +15,22 @@
       #$(mapcar #$$(if (> $$x 9) (- $$x 9) $$x) $digits)  ;; <-- nested partial eval
       #$(zerop (mod (apply #'+ $digits) 10))))
 
+
+
+(enable-lazy-eval-reader-macros)
+
+(defun lazy-eg1 ()
+  (let* ((four #~(print (+ 2 2)))
+         (sum #~(+ (print 1) (print 2) (print 3) #!four)))
+    (list #!sum #!sum)))
+
+;; prints 
+;; 1 
+;; 2 
+;; 3 
+;; 4 
+
+;; returns
+;; (10 10)
+
+
