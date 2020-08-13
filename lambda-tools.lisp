@@ -38,3 +38,14 @@ the preceding predicates in the list returned non-NIL."
                    ((funcall (car preds) x)
                     (conj x (cdr preds))))))
     (lambda (x) (conj x predicates))))
+
+(defun >> (arg &rest fns)
+  (dolist (fn fns)
+    (setf arg (funcall fn arg)))
+  arg)
+
+
+(defun <> (&rest fns)
+  (lambda (arg)
+    (apply #'>> arg fns)))
+
