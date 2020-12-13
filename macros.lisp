@@ -184,12 +184,12 @@ printed. But the next time only the return value is used.
 
 should return \"the big idea\"
 
-(binding> (:exit-with \"☹\")
+(binding> (:exit-value \"☹\")
     \"hey dude what's the big idea?\" 
     #$(values (search \"NOOOOOOPE\" $s) $s)
     #$(subseq $2 $1))
 
-should return (\"☹\")
+should return \"☹\"
 
 EXIT-WHEN should be a function, a predicate, that operates on the
 first value returned from one of the forms.  If EXIT-WHEN returns
@@ -212,7 +212,6 @@ e.g
 will return  (:FAILED 44)
 
 The default value of EXIT-WHEN is the predicate NULL.
-
 "
   (let ((vals (gensym))
         (fn (gensym))
