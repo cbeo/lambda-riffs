@@ -1,4 +1,4 @@
-(in-package :lambda-tools)
+(in-package :lambda-riffs)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;;; some fucntions for workign with substitution variables
@@ -14,7 +14,46 @@
   (defun numeric-var-p (symbol prefix)
     (and (substitute-var-p symbol prefix)
          (digit-char-p
-          (elt (symbol-name symbol) (length prefix))))))
+          (elt (symbol-name symbol) (length prefix)))))
+
+
+  (set-dispatch-macro-character
+   #\# #\$
+   (lambda (stream subchar infix)
+     (declare (ignore subchar infix))
+     (let ((form1 (read stream)))
+       (if (symbolp form1)
+           (list '$ (list (concatenate 'string "$"
+                                       (symbol-name form1)))
+                 (read stream))
+           (list '$ () form1)))))
+  
+  
+  (set-dispatch-macro-character
+   #\# #\~
+   (lambda (stream subchar arg)
+     (declare (ignore arg subchar))
+     (list 'make-lazy (read stream))))
+  
+  (set-dispatch-macro-character
+   #\# #\!
+   (lambda (stream subchar arg)
+     (declare (ignore arg subchar))
+     (list 'funcall (read stream)))))
+
+;; Note, presently references to upper level variables in nested
+;; partials requires tha tthose upper level variables acttually appear
+;; in the upper level partials.
+
+;; e.g. 
+;; 
+;; #$(mapcar #$$(cons $$x (length $xs)) $xs)
+;;
+;;  is OK but 
+;;
+;; #$(mapcar #$$(cons $$x (length $passed-in-list)) '(1 2 3 4))
+;;
+;; is not ok. 
 
 (defmacro $ ((&optional (prefix "$")) expr)
   (let ((new-params (list))
@@ -46,7 +85,6 @@
     `(lambda ,new-params ,expr)))
 
 
-
 (defmacro conj (&rest preds)
   (let ((block-label (gensym)))
     `(let ((preds (list ,@preds)))
@@ -54,10 +92,9 @@
          (block ,block-label
            (unless preds (return-from ,block-label t))
            (let (acc)
-             (dolist (p preds)
+             (dolist (p preds acc)
                (setf acc (funcall p arg))
-               (unless acc (return-from ,block-label nil)))
-             acc))))))
+               (unless acc (return-from ,block-label nil)))))))))
 
 (defmacro disj (&rest preds)
   (let ((block-label (gensym)))
@@ -66,10 +103,9 @@
          (block ,block-label
            (unless preds (return-from ,block-label nil))
            (let (acc)
-             (dolist (p preds)
+             (dolist (p preds acc)
                (setf acc (funcall p arg))
-               (when acc (return-from ,block-label acc)))
-             acc))))))
+               (when acc (return-from ,block-label acc)))))))))
 
 (defmacro make-lazy (form)
   (let ((run-p (gensym))
@@ -83,29 +119,4 @@
          ,val))))
 
 
-(defun enable-partial-eval-reader-macro ()
-  (set-dispatch-macro-character
-   #\# #\$
-   (lambda (stream subchar infix)
-     (declare (ignore subchar infix))
-     (let ((form1 (read stream)))
-       (if (symbolp form1)
-           (list '$ (list (concatenate 'string "$"
-                                       (symbol-name form1)))
-                 (read stream))
-           (list '$ () form1))))))
 
-
-(defun enable-lazy-eval-reader-macros ()
-
-  (set-dispatch-macro-character
-   #\# #\~
-   (lambda (stream subchar arg)
-     (declare (ignore arg subchar))
-     (list 'make-lazy (read stream))))
-
-  (set-dispatch-macro-character
-   #\# #\!
-   (lambda (stream subchar arg)
-     (declare (ignore arg subchar))
-     (list 'funcall (read stream)))))
