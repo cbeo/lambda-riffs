@@ -174,28 +174,40 @@ printed. But the next time only the return value is used.
 
 
 
-(defmacro monadic> ((init &key (fail-when #'null) fail-with) &rest functions)
+(defmacro monadic ((&key (exit-when #'null) (exit-with #'identity)) init &rest functions)
   "A threading macro. Some examples:
 
-(monadic>
- (\"hey dude what's the big idea\")     ; starting state
+(monadic ()
+ \"hey dude what's the big idea\"       ; starting state
  #$(values (search \"the\" $s) $s)      ; multiple-values are passed along as arguments 
  #$(subseq $2 $1))                      : returns the result of the last form
 
 should return \"the big idea\"
 
-(monadic> 
-    (\"hey dude what's the big idea?\" :fail-with \"☹\")
+(monadic (:exit-with \"☹\")
+    \"hey dude what's the big idea?\" 
     #$(values (search \"NOOOOOOPE\" $s) $s)
     #$(subseq $2 $1))
 
 should return \"☹\".
 
-FAIL-WHEN should be a function, a predicate, that operates on the
-first value returned from one of the forms. If non-NIL, the MONADIC>
-form returns with the value of the expression FAIL-WITH .
+EXIT-WHEN should be a function, a predicate, that operates on the
+first value returned from one of the forms. If non-NIL, the MONADIC
+form returns by calling the EXIT-WITH function on the list of values
+returned the the most recently called function.
 
-The default value of FAIL-WHEN is the predicate NULL.
+e.g 
+
+(monadic (:exit-when #'evenp 
+           :exit-with #$(list* :failed $x))
+     33
+     #$(+ 11 $x)
+     #$(- 5 $x))
+
+will return  (:FAILED 44)
+
+The default value of EXIT-WHEN is the predicate NULL.
+The default value of EXIT-WITH is IDENTITY
 
 "
   (let ((vals (gensym))
@@ -205,8 +217,8 @@ The default value of FAIL-WHEN is the predicate NULL.
        (block ,block-label 
          (dolist (,fn (list ,@functions) (values-list ,vals))
            (setq ,vals  (multiple-value-list (apply ,fn ,vals)))
-           (when (funcall ,fail-when (car ,vals))
-             (return-from ,block-label ,fail-with)))))))
+           (when (funcall ,exit-when (car ,vals))
+             (return-from ,block-label (funcall ,exit-with ,vals))))))))
 
 
 
