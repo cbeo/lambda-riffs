@@ -56,6 +56,44 @@
 ;; is not ok. 
 
 (defmacro $ ((&optional (prefix "$")) expr)
+  "Function splicer. A kind of partial evaluation.
+
+Meant to be used in conjunction with the reader macro #$.
+
+E.g. 
+
+#$(+ $X 1)  
+
+is roughly equivalent to 
+
+(LAMBDA ($X) (+ $X 1))
+
+The order of arguments can be controlled by using positional
+variables. E.g.
+
+#$(+ $2 $1) 
+
+is equivalent to 
+
+(LAMBDA ($1 $2) (+ $2 $1))
+
+Limited nestiing is supported.  E.g.
+
+#$(MAPCAR #$$(CONS $$INNER (LENGTH $OUTER))  $OUTER) 
+
+is equvalent to
+
+(LAMBDA ($OUTER) 
+  (MAPCAR (LAMBDA ($$INNER) (CONS $$INNER (LENGTH $OUTER)))
+          $OUTER))
+
+However, a variable inside a nested form must actually appear in the
+surrounding form. 
+
+THIS WONT WORK: #$(+ #$$(* $X $$Y)) because $$Y doesn't appear in the
+surrounding form.
+
+ "
   (let ((new-params (list))
         (numeric-params nil))
     (labels ((walk (node)
@@ -86,6 +124,7 @@
 
 
 (defmacro conj (&rest preds)
+  "A composition macro. Short circuiting predicate conjunction."
   (let ((block-label (gensym)))
     `(let ((preds (list ,@preds)))
        (lambda (arg)
@@ -96,7 +135,9 @@
                (setf acc (funcall p arg))
                (unless acc (return-from ,block-label nil)))))))))
 
+
 (defmacro disj (&rest preds)
+  "A composition macro. Short circuiting predicate disjunction."
   (let ((block-label (gensym)))
     `(let ((preds (list ,@preds)))
        (lambda (arg)
@@ -108,6 +149,17 @@
                (when acc (return-from ,block-label acc)))))))))
 
 (defmacro make-lazy (form)
+  "Wraps FORM in a thunk.  Intended to be used with teh #~ and #! reader macros:
+
+(let ((computation #~(progn (print 'hey) 10)))
+  (cons #!computation #!computation))
+
+HEY
+(10 . 10)
+
+The first time the computation is forced, it is run, and HEY is
+printed. But the next time only the return value is used.
+"
   (let ((run-p (gensym))
         (val (gensym)))
     `(let ((,run-p nil)
@@ -117,6 +169,41 @@
            (setf ,val ,form)
            (setf ,run-p t))
          ,val))))
+
+
+
+
+
+(defmacro monadic> ((init &key (fail-when #'null) fail-with) &rest functions)
+  "A threading macro. Some examples:
+
+(monadic>
+ (\"hey dude what's the big idea\")     ; starting state
+ #$(values (search \"the\" $s) $s)      ; multiple-values are passed along as arguments 
+ #$(subseq $2 $1))                      : returns the result of the last form
+
+should return \"the big idea\"
+
+(monadic> 
+    (\"hey dude what's the big idea?\" :fail-with \"☹\")
+    #$(values (search \"NOOOOOOPE\" $s) $s)
+    #$(subseq $2 $1))
+
+should return \"☹\".
+
+FAIL-WHEN should be a function, a predicate, that operates on the
+first value returned from one of the forms. If non-NIL, the MONADIC>
+form returns with the value of the expression FAIL-WITH .
+"
+  (let ((vals (gensym))
+        (fn (gensym))
+        (block-label (gensym)))
+    `(let ((,vals (multiple-value-list ,init)))
+       (block ,block-label 
+         (dolist (,fn (list ,@functions) (values-list ,vals))
+           (setq ,vals  (multiple-value-list (apply ,fn ,vals)))
+           (when (funcall ,fail-when (car ,vals))
+             (return-from ,block-label ,fail-with)))))))
 
 
 
