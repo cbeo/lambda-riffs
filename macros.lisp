@@ -194,6 +194,9 @@ should return \"☹\".
 FAIL-WHEN should be a function, a predicate, that operates on the
 first value returned from one of the forms. If non-NIL, the MONADIC>
 form returns with the value of the expression FAIL-WITH .
+
+The default value of FAIL-WHEN is the predicate NULL.
+
 "
   (let ((vals (gensym))
         (fn (gensym))

@@ -4,6 +4,7 @@
   (:use #:cl)
   (:export #:$
            #:->
+           #:monadic>
            #:all>
            #:some>
            #:make-lazy
