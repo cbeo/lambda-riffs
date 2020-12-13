@@ -174,7 +174,7 @@ printed. But the next time only the return value is used.
 
 
 
-(defmacro binding> ((&key (exit-when #'null) (exit-with #'identity)) init &rest functions)
+(defmacro binding> ((&key (exit-when #'null) exit-value exit-function) init &rest functions)
   "A threading macro. Some examples:
 
 (binding> ()
@@ -189,17 +189,22 @@ should return \"the big idea\"
     #$(values (search \"NOOOOOOPE\" $s) $s)
     #$(subseq $2 $1))
 
-should return \"☹\".
+should return (\"☹\")
 
 EXIT-WHEN should be a function, a predicate, that operates on the
-first value returned from one of the forms. If non-NIL, the BINDING>
-form returns by calling the EXIT-WITH function on the list of values
-returned the the most recently called function.
+first value returned from one of the forms.  If EXIT-WHEN returns
+non-NIL, then the form exits early.
+
+If EXIT-FUNCTION is non-NIL it is expected to be a function that
+accepts a list, the list of values returned from the last function in
+the chain.
+
+If EXIT-FUNCTION is NIL, then EXIT-VALUE is returned instead.
 
 e.g 
 
 (binding> (:exit-when #'evenp 
-           :exit-with #$(list* :failed $x))
+           :exit-function #$(list* :failed $x))
      33
      #$(+ 11 $x)
      #$(- 5 $x))
@@ -207,7 +212,6 @@ e.g
 will return  (:FAILED 44)
 
 The default value of EXIT-WHEN is the predicate NULL.
-The default value of EXIT-WITH is IDENTITY
 
 "
   (let ((vals (gensym))
@@ -218,7 +222,9 @@ The default value of EXIT-WITH is IDENTITY
          (dolist (,fn (list ,@functions) (values-list ,vals))
            (setq ,vals  (multiple-value-list (apply ,fn ,vals)))
            (when (funcall ,exit-when (car ,vals))
-             (return-from ,block-label (funcall ,exit-with ,vals))))))))
+             (return-from ,block-label
+               (if ,exit-function (funcall ,exit-function ,vals)
+                   ,exit-value))))))))
 
 
 
